@@ -1,0 +1,220 @@
+const { app, BrowserWindow, ipcMain } = require('electron');
+const path = require('path');
+const fs = require('fs');
+const os = require('os');
+
+function createWindow() {
+  const win = new BrowserWindow({
+    width: 420,
+    height: 820,
+
+    minWidth: 420,
+    minHeight: 820,
+    maxWidth: 420,
+    maxHeight: 820,
+
+    resizable: false,
+    maximizable: false,
+    fullscreenable: false,
+
+    frame: false,
+    transparent: true,
+
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true
+    }
+  });
+
+  win.loadFile(path.join(__dirname, 'app/index.html'));
+  win.setMenu(null);
+
+  win.webContents.on('did-finish-load', () => {
+
+    /* ===== transparent background ===== */
+    win.webContents.insertCSS(`
+      html, body {
+        background: transparent !important;
+      }
+    `);
+
+    /* ===== rounded window ===== */
+    win.webContents.insertCSS(`
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        border-radius: 16px;
+        overflow: hidden;
+        background: #0a0a0a;
+      }
+    `);
+
+    /* ===== draggable top bar ===== */
+    win.webContents.insertCSS(`
+      .top-bar {
+        -webkit-app-region: drag;
+      }
+      button, input, svg {
+        -webkit-app-region: no-drag;
+      }
+    `);
+
+    /* ===== SVG buttons ===== */
+    const svgMin = `
+      <svg width="12" height="12" viewBox="0 0 12 12">
+        <rect x="2" y="6" width="8" height="1" fill="currentColor"/>
+      </svg>`;
+
+    const svgClose = `
+      <svg width="12" height="12" viewBox="0 0 12 12">
+        <path d="M3 3 L9 9 M9 3 L3 9"
+          stroke="currentColor"
+          stroke-width="1.4"
+          stroke-linecap="round"/>
+      </svg>`;
+
+    win.webContents.executeJavaScript(`
+      (() => {
+        const bar = document.querySelector('.top-bar');
+        if (!bar) return;
+
+        const box = document.createElement('div');
+        box.style.display = 'flex';
+        box.style.gap = '6px';
+        box.style.marginLeft = 'auto';
+
+        const mkBtn = (svg) => {
+          const b = document.createElement('button');
+          b.innerHTML = svg;
+          b.style.width = '28px';
+          b.style.height = '28px';
+          b.style.display = 'flex';
+          b.style.alignItems = 'center';
+          b.style.justifyContent = 'center';
+          b.style.border = '1px solid #2a2a2a';
+          b.style.background = '#141414';
+          b.style.color = '#fff';
+          b.style.borderRadius = '6px';
+          b.style.cursor = 'pointer';
+          return b;
+        };
+
+        const btnMin = mkBtn(\`${svgMin}\`);
+        const btnClose = mkBtn(\`${svgClose}\`);
+
+        btnMin.onclick = () => window.electronAPI.minimize();
+        btnClose.onclick = () => window.close();
+
+        box.append(btnMin, btnClose);
+        bar.appendChild(box);
+      })();
+    `).catch(console.error);
+  });
+}
+
+/* ===== IPC ===== */
+
+// ย่อหน้าต่าง
+ipcMain.handle('minimize', (e) => {
+  BrowserWindow.fromWebContents(e.sender).minimize();
+});
+
+// เซฟไฟล์ลง ~/Music อัตโนมัติ (ไม่ใช้ dialog)
+ipcMain.handle('save-file', async (e, buffer, filename) => {
+  try {
+    const musicDir = path.join(os.homedir(), 'Music');
+    if (!fs.existsSync(musicDir)) {
+      fs.mkdirSync(musicDir, { recursive: true });
+    }
+
+    const filePath = path.join(musicDir, filename);
+    fs.writeFileSync(filePath, Buffer.from(buffer));
+
+    return { ok: true, path: filePath };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+// ========== ฟีเจอร์ใหม่: อ่านไฟล์จากโฟลเดอร์ Music ==========
+
+// อ่านรายการไฟล์เพลงจากโฟลเดอร์ Music
+ipcMain.handle('load-music-files', async () => {
+  try {
+    const musicDir = path.join(os.homedir(), 'Music');
+    
+    // ตรวจสอบว่าโฟลเดอร์มีอยู่หรือไม่
+    if (!fs.existsSync(musicDir)) {
+      return { ok: true, files: [] };
+    }
+
+    // อ่านไฟล์ทั้งหมดในโฟลเดอร์
+    const allFiles = fs.readdirSync(musicDir);
+    
+    // กรองเฉพาะไฟล์เพลง (mp3, m4a, wav, ogg, flac)
+    const audioExtensions = ['.mp3', '.m4a', '.wav', '.ogg', '.flac', '.aac', '.opus'];
+    const musicFiles = allFiles.filter(file => {
+      const ext = path.extname(file).toLowerCase();
+      return audioExtensions.includes(ext);
+    });
+
+    // สร้าง array ของข้อมูลไฟล์
+    const filesData = musicFiles.map(filename => {
+      const filePath = path.join(musicDir, filename);
+      const stats = fs.statSync(filePath);
+      
+      return {
+        name: filename,
+        path: filePath,
+        size: stats.size,
+        modified: stats.mtime.getTime()
+      };
+    });
+
+    // เรียงตามชื่อไฟล์
+    filesData.sort((a, b) => a.name.localeCompare(b.name));
+
+    return { ok: true, files: filesData };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+// อ่านไฟล์เพลงเป็น buffer
+ipcMain.handle('read-music-file', async (e, filePath) => {
+  try {
+    // ตรวจสอบว่าไฟล์อยู่ในโฟลเดอร์ Music (security check)
+    const musicDir = path.join(os.homedir(), 'Music');
+    const normalizedPath = path.normalize(filePath);
+    
+    if (!normalizedPath.startsWith(musicDir)) {
+      throw new Error('Invalid file path');
+    }
+
+    // ตรวจสอบว่าไฟล์มีอยู่จริง
+    if (!fs.existsSync(filePath)) {
+      throw new Error('File not found');
+    }
+
+    // อ่านไฟล์
+    const buffer = fs.readFileSync(filePath);
+    const filename = path.basename(filePath);
+
+    return { 
+      ok: true, 
+      buffer: Array.from(buffer), // Convert to array for transfer
+      filename: filename 
+    };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+app.whenReady().then(createWindow);
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit();
+});

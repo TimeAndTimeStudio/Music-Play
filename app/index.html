@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0a0a0a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
+    <title>Music Player</title>
+
+    <!-- Wave.js Library - โหลดจาก assets/www/wave.js -->
+    <script src="wave.js"></script>
+
+    <style>
+     .action-status {
+  position: fixed;
+
+  /* อยู่กึ่งกลางแนวนอน */
+  left: 50%;
+  transform: translateX(-50%) translateY(-6px);
+
+  /* อยู่ใต้แถบ tabs */
+  top: 114px;
+
+  z-index: 9999;
+  width: 95%;
+  /* max-width: 95%; */
+  padding: 10px 14px;
+
+  background: rgba(20, 20, 20, 0.95);
+  color: #fff;
+  font-size: 13px;
+  border-radius: 10px;
+  border: 1px solid #2a2a2a;
+
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+
+  opacity: 0;
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+
+/* แสดง */
+.action-status.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* สีตามสถานะ */
+.action-status.success {
+  border-color: #2ecc71;
+}
+
+.action-status.error {
+  border-color: #e74c3c;
+}
+
+.action-status.info {
+  border-color: #3498db;
+}
+
+.action-status.hidden {
+  pointer-events: none;
+}
+
+
+        :root {
+          --app-radius: 16px;
+          --primary: #ff6b35;
+          --primary-light: #ff8c61;
+          --primary-dark: #e55a2b;
+          --bg-dark: #0a0a0a;
+          --bg-card: #141414;
+          --bg-hover: #1a1a1a;
+          --text-primary: #ffffff;
+          --text-secondary: #a0a0a0;
+          --border: #2a2a2a;
+        }
+
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Inter', sans-serif;
+        }
+
+        body {
+          background: var(--bg-dark);
+          color: var(--text-primary);
+          display: flex;
+          flex-direction: column;
+        }
+
+        .app-container {
+          width: 100%;
+          height: 100%;
+          background: var(--bg-dark);
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .top-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px 16px;
+          background: var(--bg-card);
+          border-bottom: 1px solid var(--border);
+          user-select: none;
+        }
+        .track-item-delete {
+          background: transparent;
+          border: 1px solid var(--border);
+          color: var(--text-secondary);
+          width: 28px;
+          height: 28px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+          flex-shrink: 0;
+        }
+
+        .track-item-delete:hover {
+          background: rgba(255, 68, 68, 0.1);
+          border-color: #ff4444;
+          color: #ff4444;
+        }
+
+        .track-item-delete:active {
+          transform: scale(0.95);
+        }
+                .top-bar-title {
+          font-size: 13px;
+          font-weight: 500;
+          color: var(--text-secondary);
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+        }
+
+        .tabs {
+          display: flex;
+          background: var(--bg-card);
+          border-bottom: 1px solid var(--border);
+          padding: 0 12px;
+          gap: 4px;
+        }
+
+        .tab {
+          flex: 1;
+          padding: 12px 8px;
+          text-align: center;
+          cursor: pointer;
+          background: transparent;
+          border: none;
+          color: var(--text-secondary);
+          font-size: 13px;
+          font-weight: 500;
+          transition: all 0.2s ease;
+          border-radius: 8px 8px 0 0;
+          position: relative;
+        }
+
+        .tab.active {
+          color: var(--primary);
+          background: var(--bg-dark);
+        }
+
+        .tab.active::after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background: var(--primary);
+        }
+
+        .page {
+          flex: 1;
+          flex-direction: column;
+          overflow: hidden;
+          display: none;
+        }
+
+        .page.active {
+          display: flex;
+        }
+
+        #playerPage.active {
+          padding: 20px;
+          gap: 16px;
+          display: flex;
+        }
+
+        .waveform-container {
+          height: 120px;
+          background: var(--bg-card);
+          border-radius: 12px;
+          overflow: hidden;
+          border: 1px solid var(--border);
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        #waveform {
+          width: 100%;
+          height: 100%;
+          display: block;
+        }
+
+        .track-info {
+          text-align: center;
+          padding: 8px 0;
+        }
+
+        .track-name {
+          font-size: 15px;
+          font-weight: 500;
+          color: var(--text-primary);
+          margin-bottom: 6px;
+          text-overflow: ellipsis;
+          overflow: hidden;
+          white-space: nowrap;
+          padding: 0 10px;
+        }
+
+        .track-time {
+          font-size: 11px;
+          color: var(--text-secondary);
+          font-weight: 400;
+        }
+
+        .progress-bar {
+          width: 100%;
+          height: 4px;
+          background: var(--bg-card);
+          border-radius: 2px;
+          cursor: pointer;
+          overflow: hidden;
+          transition: height 0.2s ease;
+        }
+
+        .progress {
+          height: 100%;
+          background: linear-gradient(90deg, var(--primary), var(--primary-light));
+          width: 0%;
+          border-radius: 2px;
+          transition: width 0.1s linear;
+        }
+
+        .controls {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 16px;
+          padding: 12px 0;
+        }
+
+        button.control-btn {
+          background: var(--bg-card);
+          border: 1px solid var(--border);
+          color: var(--text-primary);
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          cursor: pointer;
+          font-size: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+        }
+
+        button.control-btn svg {
+          display: block;
+        }
+
+        button.control-btn:active {
+          transform: scale(0.95);
+        }
+
+        #playPause {
+          width: 50px;
+          height: 50px;
+          font-size: 18px;
+          background: var(--primary);
+          border: none;
+          box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+        }
+
+        #playPause svg {
+          fill: white;
+        }
+
+        #loopBtn {
+          font-size: 14px;
+        }
+
+        #loopBtn.active {
+          background: var(--primary);
+          border-color: var(--primary);
+          color: white;
+        }
+
+        #loopBtn.active svg {
+          stroke: white;
+        }
+
+        .now-playing {
+          background: var(--bg-card);
+          border-radius: 12px;
+          padding: 16px;
+          border: 1px solid var(--border);
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+        }
+
+        .playlist-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+        }
+
+        .playlist-header h3 {
+          font-size: 13px;
+          color: var(--text-secondary);
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .select-all-btn {
+          background: transparent;
+          border: 1px solid var(--border);
+          color: var(--text-secondary);
+          padding: 6px 12px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 11px;
+          font-weight: 500;
+          transition: all 0.2s ease;
+        }
+
+        .playlist-container {
+          flex: 1;
+          overflow-y: auto;
+          margin: 0 -4px;
+          padding: 0 4px;
+        }
+
+        .playlist {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .track-item {
+          display: flex;
+          align-items: center;
+          padding: 10px 12px;
+          background: transparent;
+          border: 1px solid transparent;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          gap: 10px;
+        }
+
+        .track-item:active {
+          transform: scale(0.98);
+        }
+
+        .track-item.playing {
+          background: rgba(255, 107, 53, 0.1);
+          border-color: var(--primary);
+        }
+
+        .track-item.selected {
+          background: rgba(255, 107, 53, 0.05);
+          border-color: var(--primary);
+        }
+
+        .checkbox {
+          width: 18px;
+          height: 18px;
+          border: 2px solid var(--border);
+          border-radius: 4px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+        }
+
+        .checkbox.checked {
+          background: var(--primary);
+          border-color: var(--primary);
+        }
+
+        .checkbox.checked::after {
+          content: '✓';
+          color: white;
+          font-size: 12px;
+        }
+
+        .track-item-name {
+          flex: 1;
+          font-size: 13px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .track-item-download {
+          background: transparent;
+          border: 1px solid var(--border);
+          color: var(--text-secondary);
+          width: 28px;
+          height: 28px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+          flex-shrink: 0;
+        }
+
+        .track-item-download:hover {
+          background: rgba(76, 175, 80, 0.1);
+          border-color: #4CAF50;
+          color: #4CAF50;
+        }
+
+        .track-item-download:active {
+          transform: scale(0.95);
+        }
+
+        .track-item-download svg {
+          stroke: currentColor;
+        }
+
+        .add-selected-container {
+          margin-top: 12px;
+          padding-top: 12px;
+          border-top: 1px solid var(--border);
+        }
+
+        .add-selected-btn {
+          width: 100%;
+          padding: 12px 20px;
+          background: var(--primary);
+          border: none;
+          border-radius: 8px;
+          color: white;
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .add-selected-btn:active {
+          transform: scale(0.98);
+        }
+
+        .add-selected-btn:disabled {
+          background: var(--bg-hover);
+          color: var(--text-secondary);
+          cursor: not-allowed;
+        }
+
+        #queuePage {
+          padding: 16px;
+          gap: 12px;
+          overflow: hidden;
+        }
+
+        .queue-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding-bottom: 12px;
+          border-bottom: 1px solid var(--border);
+        }
+
+        .queue-header h2 {
+          font-size: 18px;
+          font-weight: 600;
+        }
+
+        .queue-actions {
+          display: flex;
+          gap: 8px;
+        }
+
+        .queue-btn {
+          background: var(--bg-card);
+          border: 1px solid var(--border);
+          color: var(--text-secondary);
+          padding: 6px 12px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 11px;
+          transition: all 0.2s ease;
+        }
+
+        .queue-list {
+          flex: 1;
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .empty-queue {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--text-secondary);
+          font-size: 13px;
+          text-align: center;
+          line-height: 1.6;
+        }
+
+        .queue-item {
+          display: flex;
+          align-items: center;
+          padding: 10px 12px;
+          background: var(--bg-card);
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          gap: 10px;
+          cursor: move;
+          transition: all 0.2s ease;
+        }
+
+        .queue-item.playing {
+          background: rgba(255, 107, 53, 0.1);
+          border-color: var(--primary);
+        }
+
+        .queue-item.dragging {
+          opacity: 0.5;
+        }
+
+        .queue-item.drag-over {
+          border-color: var(--primary);
+          transform: translateY(-2px);
+        }
+
+        .drag-handle {
+          color: var(--text-secondary);
+          cursor: grab;
+          font-size: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .drag-handle:active {
+          cursor: grabbing;
+        }
+
+        .drag-handle svg {
+          display: block;
+        }
+
+        .queue-number {
+          min-width: 24px;
+          text-align: center;
+          font-size: 12px;
+          color: var(--text-secondary);
+          font-weight: 500;
+        }
+
+        .queue-name {
+          flex: 1;
+          font-size: 13px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .queue-remove {
+          background: transparent;
+          border: 1px solid var(--border);
+          color: var(--text-secondary);
+          width: 24px;
+          height: 24px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+        }
+
+        #downloadPage {
+          padding: 16px;
+          gap: 16px;
+          overflow-y: auto;
+        }
+
+        .download-header h2 {
+          font-size: 18px;
+          font-weight: 600;
+          margin-bottom: 8px;
+        }
+
+        .download-header p {
+          font-size: 13px;
+          color: var(--text-secondary);
+        }
+
+        #statusPage {
+          padding: 16px;
+          gap: 16px;
+          overflow: hidden;
+        }
+
+        #statusPage.active {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .status-header {
+          padding-bottom: 12px;
+          border-bottom: 1px solid var(--border);
+        }
+
+        .status-header h2 {
+          font-size: 18px;
+          font-weight: 600;
+          margin-bottom: 8px;
+        }
+
+        .status-header p {
+          font-size: 13px;
+          color: var(--text-secondary);
+        }
+
+        .download-form {
+          background: var(--bg-card);
+          border-radius: 12px;
+          padding: 16px;
+          border: 1px solid var(--border);
+        }
+
+        .form-group {
+          margin-bottom: 12px;
+        }
+
+        .form-group label {
+          display: block;
+          font-size: 12px;
+          color: var(--text-secondary);
+          margin-bottom: 8px;
+          font-weight: 500;
+        }
+
+        #youtubeUrl, #apiUrl {
+          width: 100%;
+          padding: 12px 16px;
+          background: var(--bg-dark);
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          color: var(--text-primary);
+          font-size: 13px;
+          outline: none;
+          transition: all 0.2s ease;
+        }
+
+        #youtubeUrl:focus, #apiUrl:focus {
+          border-color: var(--primary);
+        }
+
+        .download-btn {
+          width: 100%;
+          padding: 12px 20px;
+          background: var(--primary);
+          border: none;
+          border-radius: 8px;
+          color: white;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .download-btn:active {
+          transform: scale(0.98);
+        }
+
+        .download-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .status-container {
+          background: var(--bg-card);
+          border-radius: 12px;
+          padding: 16px;
+          border: 1px solid var(--border);
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+
+        .status-title {
+          font-size: 12px;
+          color: var(--text-secondary);
+          font-weight: 500;
+          margin-bottom: 12px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        #statusList {
+          flex: 1;
+          overflow-y: auto;
+        }
+
+        .status-item {
+          padding: 12px;
+          background: var(--bg-dark);
+          border-radius: 8px;
+          margin-bottom: 8px;
+          font-size: 12px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          border: 1px solid var(--border);
+        }
+
+        .status-icon {
+          font-size: 14px;
+        }
+
+        .status-text {
+          flex: 1;
+          color: var(--text-primary);
+        }
+
+        .status-success {
+          border-color: #4CAF50;
+        }
+
+        .status-success .status-icon {
+          color: #4CAF50;
+        }
+
+        .status-error {
+          border-color: #ff4444;
+        }
+
+        .status-error .status-icon {
+          color: #ff4444;
+        }
+
+        .status-info {
+          border-color: #2196F3;
+        }
+
+        .status-info .status-icon {
+          color: #2196F3;
+        }
+
+        .no-status {
+          text-align: center;
+          color: var(--text-secondary);
+          padding: 40px 20px;
+          font-size: 13px;
+        }
+
+        ::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+          background: var(--border);
+          border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+          background: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+  <!-- Action Status Toast -->
+  <div id="actionStatus" class="action-status hidden"></div>
+
+<div class="app-container">
+    <div class="top-bar">
+        <div class="top-bar-title">Music Player</div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" data-page="playerPage">Player</button>
+        <button class="tab" data-page="queuePage">Queue (<span id="queueCount">0</span>)</button>
+        <button class="tab" data-page="downloadPage">Download</button>
+        <button class="tab" data-page="statusPage">Status</button>
+    </div>
+
+    <div class="page active" id="playerPage">
+        <div class="waveform-container">
+            <canvas id="waveform"></canvas>
+        </div>
+
+        <div class="track-info">
+            <div class="track-name" id="trackName">No track playing</div>
+            <div class="track-time">
+                <span id="currentTime">0:00</span> / <span id="duration">0:00</span>
+            </div>
+        </div>
+
+        <div class="progress-bar" id="progressBar">
+            <div class="progress" id="progress"></div>
+        </div>
+
+        <div class="controls">
+            <button class="control-btn" id="prev">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="19 20 9 12 19 4 19 20"></polygon>
+                    <line x1="5" y1="19" x2="5" y2="5"></line>
+                </svg>
+            </button>
+            <button class="control-btn" id="playPause">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+            </button>
+            <button class="control-btn" id="next">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="5 4 15 12 5 20 5 4"></polygon>
+                    <line x1="19" y1="5" x2="19" y2="19"></line>
+                </svg>
+            </button>
+            <button class="control-btn" id="loopBtn" title="Loop Queue">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                </svg>
+            </button>
+        </div>
+
+        <div class="now-playing">
+            <div class="playlist-header">
+                <h3>Library</h3>
+                <button class="select-all-btn" id="selectAll">Select All</button>
+            </div>
+            <div class="playlist-container">
+                <div class="playlist" id="playlist"></div>
+            </div>
+            <div class="add-selected-container">
+                <button class="add-selected-btn" id="addSelected" disabled>
+                    Add to Queue (<span id="selectedCount">0</span>)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="page" id="queuePage">
+        <div class="queue-header">
+            <h2>Queue (<span id="queueCount2">0</span>)</h2>
+            <div class="queue-actions">
+                <button class="queue-btn" id="clearQueue">Clear</button>
+                <button class="queue-btn" id="shuffleQueue">Shuffle</button>
+            </div>
+        </div>
+        <div class="queue-list" id="queueList">
+            <div class="empty-queue">No tracks in queue<br>Add some from the player</div>
+        </div>
+    </div>
+
+    <div class="page" id="downloadPage">
+        <div class="download-header">
+            <h2>Download from YouTube</h2>
+            <p>Paste a YouTube URL to download as MP3 (stored in app)</p>
+        </div>
+
+        <div class="download-form">
+            <div class="form-group">
+                <label for="apiUrl">API URL (สำหรับดาวน์โหลด)</label>
+                <input
+                        type="text"
+                        id="apiUrl"
+                        placeholder="Enter API URL for download"
+                >
+            </div>
+            <div class="form-group">
+                <label for="youtubeUrl">YouTube URL</label>
+                <input
+                        type="text"
+                        id="youtubeUrl"
+                        placeholder="https://www.youtube.com/watch?v=..."
+                >
+            </div>
+            <button class="download-btn" id="downloadBtn">
+                <span id="downloadBtnText">Download</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="page" id="statusPage">
+        <div class="status-header">
+            <h2>Activity Status</h2>
+            <p>Download and save activity logs</p>
+        </div>
+
+        <div class="status-container">
+            <div class="status-title">Recent Activity</div>
+            <div id="statusList">
+                <div class="no-status">No activity yet</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<audio id="audio"></audio>
+<script src="music-loader.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

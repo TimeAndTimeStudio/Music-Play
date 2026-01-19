@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Music Player</title>
+  
+  <!-- Wave.js Library (Local) - โหลดก่อนทุกอย่าง -->
+  <script src="wave.js"></script>
+  
+  <style>
+    :root {
+      --app-radius: 16px;
+      --primary: #ff6b35;
+      --primary-light: #ff8c61;
+      --primary-dark: #e55a2b;
+      --bg-dark: #0a0a0a;
+      --bg-card: #141414;
+      --bg-hover: #1a1a1a;
+      --text-primary: #ffffff;
+      --text-secondary: #a0a0a0;
+      --border: #2a2a2a;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+    }
+
+    body {
+      background: transparent;
+      color: var(--text-primary);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .app-container {
+      width: 100%;
+      height: 100%;
+      background: var(--bg-dark);
+      border-radius: var(--app-radius);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    }
+
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      -webkit-app-region: drag;
+      user-select: none;
+    }
+
+    .top-bar-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .close-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      -webkit-app-region: no-drag;
+    }
+
+    .close-btn:hover {
+      background: rgba(255, 0, 0, 0.1);
+      color: #ff4444;
+    }
+
+    .tabs {
+      display: flex;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 0 12px;
+      gap: 4px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 12px 8px;
+      text-align: center;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      border-radius: 8px 8px 0 0;
+      position: relative;
+    }
+
+    .tab:hover {
+      color: var(--text-primary);
+      background: var(--bg-hover);
+    }
+
+    .tab.active {
+      color: var(--primary);
+      background: var(--bg-dark);
+    }
+
+    .tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--primary);
+    }
+
+    .page {
+      flex: 1;
+      flex-direction: column;
+      overflow: hidden;
+      display: none !important;
+    }
+
+    .page.active {
+      display: flex !important;
+    }
+
+    #playerPage.active {
+      padding: 20px;
+      gap: 16px;
+      display: flex;
+    }
+
+    .waveform-container {
+      height: 120px;
+      background: var(--bg-card);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #waveform {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .track-info {
+      text-align: center;
+      padding: 8px 0;
+    }
+
+    .track-name {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+      padding: 0 10px;
+    }
+
+    .track-time {
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background: var(--bg-card);
+      border-radius: 2px;
+      cursor: pointer;
+      overflow: hidden;
+      transition: height 0.2s ease;
+    }
+
+    .progress-bar:hover {
+      height: 6px;
+    }
+
+    .progress {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--primary-light));
+      width: 0%;
+      border-radius: 2px;
+      transition: width 0.1s linear;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 0;
+    }
+
+    button.control-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    button.control-btn:hover {
+      background: var(--bg-hover);
+      border-color: var(--primary);
+      transform: scale(1.05);
+    }
+
+    button.control-btn:active {
+      transform: scale(0.95);
+    }
+
+    #playPause {
+      width: 50px;
+      height: 50px;
+      font-size: 18px;
+      background: var(--primary);
+      border: none;
+      box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+    }
+
+    #playPause:hover {
+      background: var(--primary-light);
+      transform: scale(1.05);
+    }
+
+    .now-playing {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .playlist-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .playlist-header h3 {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .select-all-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .select-all-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .playlist-container {
+      flex: 1;
+      overflow-y: auto;
+      margin: 0 -4px;
+      padding: 0 4px;
+    }
+
+    .track-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: transparent;
+      margin-bottom: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border-radius: 8px;
+      border: 1px solid transparent;
+    }
+
+    .track-item:hover {
+      background: var(--bg-hover);
+      border-color: var(--border);
+    }
+
+    .track-checkbox {
+      cursor: pointer;
+      width: 16px;
+      height: 16px;
+      accent-color: var(--primary);
+    }
+
+    .track-name-text {
+      flex: 1;
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text-primary);
+    }
+
+    .no-tracks {
+      text-align: center;
+      color: var(--text-secondary);
+      padding: 20px;
+      font-size: 13px;
+    }
+
+    .add-selected-container {
+      padding: 12px 0 0 0;
+      border-top: 1px solid var(--border);
+      margin-top: 12px;
+    }
+
+    .add-selected-btn {
+      width: 100%;
+      padding: 12px;
+      background: var(--primary);
+      border: none;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .add-selected-btn:hover {
+      background: var(--primary-light);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+    }
+
+    .add-selected-btn:active {
+      transform: translateY(0);
+    }
+
+    #queuePage {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .queue-header {
+      padding: 20px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .queue-header h2 {
+      font-size: 16px;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+      font-weight: 500;
+    }
+
+    .queue-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .queue-btn {
+      flex: 1;
+      padding: 10px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .queue-btn:hover {
+      background: var(--bg-hover);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .queue-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .queue-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: var(--bg-card);
+      border-radius: 10px;
+      margin-bottom: 8px;
+      cursor: grab;
+      transition: all 0.2s ease;
+      border: 1px solid var(--border);
+      position: relative;
+    }
+
+    .queue-item:hover {
+      background: var(--bg-hover);
+      border-color: var(--primary);
+      transform: translateX(2px);
+    }
+
+    .queue-item:active {
+      cursor: grabbing;
+    }
+
+    .queue-item.dragging {
+      opacity: 0.5;
+      cursor: grabbing;
+    }
+
+    .queue-item.drag-over {
+      border-color: var(--primary);
+      background: var(--bg-hover);
+      border-style: dashed;
+    }
+
+    .queue-item.playing {
+      background: linear-gradient(90deg, rgba(255, 107, 53, 0.1), transparent);
+      border-color: var(--primary);
+    }
+
+    .drag-handle {
+      color: var(--text-secondary);
+      font-size: 16px;
+      cursor: grab;
+      padding: 4px;
+    }
+
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+
+    .queue-number {
+      font-size: 12px;
+      color: var(--primary);
+      font-weight: 600;
+      min-width: 24px;
+    }
+
+    .queue-name {
+      flex: 1;
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text-primary);
+    }
+
+    .queue-remove {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .queue-remove:hover {
+      background: rgba(255, 0, 0, 0.1);
+      color: #ff4444;
+    }
+
+    .empty-queue {
+      text-align: center;
+      color: var(--text-secondary);
+      padding: 60px 20px;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    #downloadPage {
+      padding: 20px;
+      overflow-y: auto;
+      gap: 16px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .download-header {
+      text-align: center;
+      padding: 20px 0;
+    }
+
+    .download-header h2 {
+      font-size: 18px;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .download-header p {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .download-form {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid var(--border);
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 13px;
+      transition: all 0.2s ease;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+    }
+
+    .form-group input::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .download-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--primary);
+      border: none;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .download-btn:hover:not(:disabled) {
+      background: var(--primary-light);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+    }
+
+    .download-btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .download-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .status-container {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      flex: 1;
+    }
+
+    .status-title {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 500;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-item {
+      padding: 12px;
+      background: var(--bg-dark);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .status-icon {
+      font-size: 14px;
+    }
+
+    .status-text {
+      flex: 1;
+      color: var(--text-primary);
+    }
+
+    .status-success {
+      border-color: #4CAF50;
+    }
+
+    .status-success .status-icon {
+      color: #4CAF50;
+    }
+
+    .status-error {
+      border-color: #ff4444;
+    }
+
+    .status-error .status-icon {
+      color: #ff4444;
+    }
+
+    .status-info {
+      border-color: #2196F3;
+    }
+
+    .status-info .status-icon {
+      color: #2196F3;
+    }
+
+    .status-warning {
+      border-color: #ff9800;
+    }
+
+    .status-warning .status-icon {
+      color: #ff9800;
+    }
+
+    .no-status {
+      text-align: center;
+      color: var(--text-secondary);
+      padding: 40px 20px;
+      font-size: 13px;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-secondary);
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .queue-item, .track-item, .status-item {
+      animation: slideIn 0.2s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <div class="top-bar">
+      <div class="top-bar-title">Music Player</div>
+      <button class="close-btn" onclick="window.close()">×</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-page="playerPage">Player</button>
+      <button class="tab" data-page="queuePage">Queue (<span id="queueCount">0</span>)</button>
+      <button class="tab" data-page="downloadPage">Download</button>
+    </div>
+
+    <div class="page active" id="playerPage">
+      <div class="waveform-container">
+        <canvas id="waveform"></canvas>
+      </div>
+
+      <div class="track-info">
+        <div class="track-name" id="trackName">No track playing</div>
+        <div class="track-time">
+          <span id="currentTime">0:00</span> / <span id="duration">0:00</span>
+        </div>
+      </div>
+
+      <div class="progress-bar" id="progressBar">
+        <div class="progress" id="progress"></div>
+      </div>
+
+      <div class="controls">
+        <button class="control-btn" id="prev">⏮</button>
+        <button class="control-btn" id="playPause">▶</button>
+        <button class="control-btn" id="next">⏭</button>
+      </div>
+
+      <div class="now-playing">
+        <div class="playlist-header">
+          <h3>Library</h3>
+          <button class="select-all-btn" id="selectAll">Select All</button>
+        </div>
+        <div class="playlist-container">
+          <div class="playlist" id="playlist"></div>
+        </div>
+        <div class="add-selected-container">
+          <button class="add-selected-btn" id="addSelected">
+            Add to Queue (<span id="selectedCount">0</span>)
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="queuePage">
+      <div class="queue-header">
+        <h2>Queue (<span id="queueCount2">0</span>)</h2>
+        <div class="queue-actions">
+          <button class="queue-btn" id="clearQueue">Clear</button>
+          <button class="queue-btn" id="shuffleQueue">Shuffle</button>
+        </div>
+      </div>
+      <div class="queue-list" id="queueList">
+        <div class="empty-queue">No tracks in queue<br>Add some from the player</div>
+      </div>
+    </div>
+
+    <div class="page" id="downloadPage">
+      <div class="download-header">
+        <h2>Download from YouTube</h2>
+        <p>Paste a YouTube URL to download as MP3</p>
+      </div>
+
+      <div class="download-form">
+        <div class="form-group">
+          <label for="youtubeUrl">YouTube URL</label>
+          <input 
+            type="text" 
+            id="youtubeUrl" 
+            placeholder="https://www.youtube.com/watch?v=..."
+          >
+        </div>
+        <button class="download-btn" id="downloadBtn">
+          <span id="downloadBtnText">Download</span>
+        </button>
+      </div>
+
+      <div class="status-container">
+        <div class="status-title">Download Status</div>
+        <div id="statusList">
+          <div class="no-status">No downloads yet</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <audio id="audio" crossorigin="anonymous"></audio>
+
+  <script>
+    // ตรวจสอบว่า Wave.js โหลดหรือยัง
+    if (typeof Wave === 'undefined') {
+      // สร้าง div แสดง error
+      const waveformDiv = document.getElementById('waveform');
+      if (waveformDiv && waveformDiv.parentElement) {
+        waveformDiv.parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ff6b35;font-size:12px;">Loading visualizer...</div>';
+      }
+    }
+
+    const audio = document.getElementById('audio');
+    const playPauseBtn = document.getElementById('playPause');
+    const prevBtn = document.getElementById('prev');
+    const nextBtn = document.getElementById('next');
+    const trackName = document.getElementById('trackName');
+    const currentTimeEl = document.getElementById('currentTime');
+    const durationEl = document.getElementById('duration');
+    const progressBar = document.getElementById('progressBar');
+    const progress = document.getElementById('progress');
+    const playlist = document.getElementById('playlist');
+    const queueList = document.getElementById('queueList');
+    const queueCount = document.getElementById('queueCount');
+    const queueCount2 = document.getElementById('queueCount2');
+    const clearQueueBtn = document.getElementById('clearQueue');
+    const shuffleQueueBtn = document.getElementById('shuffleQueue');
+    const selectAllBtn = document.getElementById('selectAll');
+    const addSelectedBtn = document.getElementById('addSelected');
+    const selectedCount = document.getElementById('selectedCount');
+    const youtubeUrlInput = document.getElementById('youtubeUrl');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const downloadBtnText = document.getElementById('downloadBtnText');
+    const statusList = document.getElementById('statusList');
+
+    let musicFiles = [];
+    let queue = [];
+    let currentTrackIndex = -1;
+    let currentPlayingFile = null;
+    let selectedTracks = new Set();
+    let draggedElement = null;
+    let draggedIndex = null;
+    let wave = null;
+
+    setInterval(() => {
+      window.electronAPI.requestMusicFiles();
+    }, 5000);
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.page).classList.add('active');
+      });
+    });
+
+    // Initialize Wave.js
+    function initWave() {
+      try {
+        const canvasElement = document.getElementById('waveform');
+        canvasElement.width = 800;
+        canvasElement.height = 400;
+        
+        if (typeof Wave === 'undefined') {
+          canvasElement.parentElement.innerHTML = '<div style="color:#ff6b35;padding:20px;text-align:center;">Wave.js not loaded. Please restart the app.</div>';
+          return;
+        }
+        
+        wave = new Wave(audio, canvasElement);
+        
+        wave.addAnimation(new wave.animations.Wave({
+          count: 50,
+          fillColor: '#ff6b35',
+          rounded: true
+        }));
+      } catch (e) {
+        const container = document.querySelector('.waveform-container');
+        if (container) {
+          container.innerHTML = '<div style="color:#ff4444;padding:20px;text-align:center;font-size:11px;">Error: ' + e.message + '</div>';
+        }
+      }
+    }
+
+    // Initialize wave when page loads
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initWave);
+    } else {
+      initWave();
+    }
+
+    window.electronAPI.requestMusicFiles();
+
+    window.electronAPI.onMusicFiles((files) => {
+      const oldMusicFiles = [...musicFiles];
+      const oldQueue = [...queue];
+
+      musicFiles = files;
+
+      let playlistChanged = false;
+      let queueChanged = false;
+
+      // ตรวจ playlist เปลี่ยน
+      const added = musicFiles.filter(f => !oldMusicFiles.includes(f));
+      const removed = oldMusicFiles.filter(f => !musicFiles.includes(f));
+      if (added.length > 0 || removed.length > 0) {
+        playlistChanged = true;
+      }
+
+      // rebuild queue จากไฟล์ที่ยังอยู่
+      const newQueueFiles = oldQueue
+        .map(i => oldMusicFiles[i])
+        .filter(f => musicFiles.includes(f));
+
+      queue = newQueueFiles.map(f => musicFiles.indexOf(f));
+      queueChanged = queue.length !== oldQueue.length;
+
+      // sync เพลงที่กำลังเล่น
+      if (currentPlayingFile) {
+        if (musicFiles.includes(currentPlayingFile)) {
+          // เพลงเดิมยังอยู่ → หา index ใหม่
+          const newIndex = queue.findIndex(
+            i => musicFiles[i] === currentPlayingFile
+          );
+          currentTrackIndex = newIndex;
+        } else {
+          // เพลงที่เล่นอยู่ถูกลบ
+          if (queue.length > 0) {
+            playFromQueue(Math.min(currentTrackIndex, queue.length - 1));
+          } else {
+            currentTrackIndex = -1;
+            currentPlayingFile = null;
+            audio.pause();
+            audio.src = '';
+            trackName.textContent = 'No track playing';
+          }
+        }
+      }
+
+      // render เท่าที่จำเป็น
+      if (playlistChanged) renderPlaylist();
+      if (queueChanged) renderQueue();
+    });
+
+
+
+    window.electronAPI.onMusicPath((path) => {
+      audio.src = path;
+    });
+
+    function renderPlaylist() {
+      if (musicFiles.length === 0) {
+        playlist.innerHTML = '<div class="no-tracks">No music files found in Music folder</div>';
+        return;
+      }
+
+      playlist.innerHTML = musicFiles.map((file, index) => 
+        `<div class="track-item" data-index="${index}">
+          <input type="checkbox" class="track-checkbox" data-index="${index}" ${selectedTracks.has(index) ? 'checked' : ''}>
+          <div class="track-name-text">${file}</div>
+        </div>`
+      ).join('');
+
+      document.querySelectorAll('.track-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+          e.stopPropagation();
+          const index = parseInt(checkbox.dataset.index);
+          if (checkbox.checked) {
+            selectedTracks.add(index);
+          } else {
+            selectedTracks.delete(index);
+          }
+          updateSelectedCount();
+        });
+      });
+
+      document.querySelectorAll('.track-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          if (e.target.classList.contains('track-checkbox')) return;
+          const index = parseInt(item.dataset.index);
+          const checkbox = item.querySelector('.track-checkbox');
+          checkbox.checked = !checkbox.checked;
+          if (checkbox.checked) {
+            selectedTracks.add(index);
+          } else {
+            selectedTracks.delete(index);
+          }
+          updateSelectedCount();
+        });
+      });
+
+      updateSelectedCount();
+    }
+
+    function updateSelectedCount() {
+      selectedCount.textContent = selectedTracks.size;
+    }
+
+    selectAllBtn.addEventListener('click', () => {
+      if (selectedTracks.size === musicFiles.length) {
+        selectedTracks.clear();
+      } else {
+        selectedTracks.clear();
+        musicFiles.forEach((_, index) => selectedTracks.add(index));
+      }
+      renderPlaylist();
+    });
+
+    addSelectedBtn.addEventListener('click', () => {
+      if (selectedTracks.size === 0) return;
+      
+      const wasEmpty = currentTrackIndex === -1;
+      
+      selectedTracks.forEach(index => {
+        if (!queue.includes(index)) {
+          queue.push(index);
+        }
+      });
+      
+      renderQueue();
+      
+      if (wasEmpty && queue.length > 0) {
+        playFromQueue(0);
+      }
+      
+      selectedTracks.clear();
+      renderPlaylist();
+    });
+
+    function renderQueue() {
+      queueCount.textContent = queue.length;
+      queueCount2.textContent = queue.length;
+
+      if (queue.length === 0) {
+        queueList.innerHTML = '<div class="empty-queue">No tracks in queue<br>Add some from the player</div>';
+        return;
+      }
+
+      queueList.innerHTML = queue.map((fileIndex, queueIndex) => `
+        <div class="queue-item ${queueIndex === currentTrackIndex ? 'playing' : ''}" draggable="true" data-queue-index="${queueIndex}">
+          <div class="drag-handle">☰</div>
+          <div class="queue-number">${queueIndex === currentTrackIndex ? '▶' : queueIndex + 1}</div>
+          <div class="queue-name">${musicFiles[fileIndex]}</div>
+          <button class="queue-remove" data-queue-index="${queueIndex}">×</button>
+        </div>
+      `).join('');
+
+      setupDragAndDrop();
+
+      document.querySelectorAll('.queue-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          if (!e.target.classList.contains('queue-remove') && 
+              !e.target.classList.contains('drag-handle')) {
+            const queueIndex = parseInt(item.dataset.queueIndex);
+            playFromQueue(queueIndex);
+          }
+        });
+      });
+
+      document.querySelectorAll('.queue-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const queueIndex = parseInt(btn.dataset.queueIndex);
+          removeFromQueue(queueIndex);
+        });
+      });
+    }
+
+    function setupDragAndDrop() {
+      const items = document.querySelectorAll('.queue-item');
+      
+      items.forEach(item => {
+        item.addEventListener('dragstart', handleDragStart);
+        item.addEventListener('dragend', handleDragEnd);
+        item.addEventListener('dragover', handleDragOver);
+        item.addEventListener('drop', handleDrop);
+        item.addEventListener('dragenter', handleDragEnter);
+        item.addEventListener('dragleave', handleDragLeave);
+      });
+    }
+
+    function handleDragStart(e) {
+      draggedElement = this;
+      draggedIndex = parseInt(this.dataset.queueIndex);
+      this.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/html', this.innerHTML);
+    }
+
+    function handleDragEnd(e) {
+      this.classList.remove('dragging');
+      document.querySelectorAll('.queue-item').forEach(item => {
+        item.classList.remove('drag-over');
+      });
+    }
+
+    function handleDragOver(e) {
+      if (e.preventDefault) {
+        e.preventDefault();
+      }
+      e.dataTransfer.dropEffect = 'move';
+      return false;
+    }
+
+    function handleDragEnter(e) {
+      if (this !== draggedElement) {
+        this.classList.add('drag-over');
+      }
+    }
+
+    function handleDragLeave(e) {
+      this.classList.remove('drag-over');
+    }
+
+    function handleDrop(e) {
+      if (e.stopPropagation) {
+        e.stopPropagation();
+      }
+
+      if (draggedElement !== this) {
+        const dropIndex = parseInt(this.dataset.queueIndex);
+        const draggedItem = queue[draggedIndex];
+        queue.splice(draggedIndex, 1);
+        queue.splice(dropIndex, 0, draggedItem);
+
+        if (currentTrackIndex === draggedIndex) {
+          currentTrackIndex = dropIndex;
+        } else if (draggedIndex < currentTrackIndex && dropIndex >= currentTrackIndex) {
+          currentTrackIndex--;
+        } else if (draggedIndex > currentTrackIndex && dropIndex <= currentTrackIndex) {
+          currentTrackIndex++;
+        }
+
+        renderQueue();
+      }
+
+      return false;
+    }
+
+    function playFromQueue(queueIndex) {
+      if (queueIndex < 0 || queueIndex >= queue.length) return;
+
+      currentTrackIndex = queueIndex;
+      const fileIndex = queue[queueIndex];
+      const filename = musicFiles[fileIndex];
+
+      currentPlayingFile = filename;
+      
+      trackName.textContent = filename;
+      window.electronAPI.getMusicPath(filename);
+      
+      renderQueue();
+      
+      audio.onloadeddata = () => {
+        audio.play().catch(e => {});
+      };
+    }
+
+    function removeFromQueue(queueIndex) {
+      queue.splice(queueIndex, 1);
+      
+      if (queueIndex < currentTrackIndex) {
+        currentTrackIndex--;
+      } else if (queueIndex === currentTrackIndex) {
+        if (queue.length > 0) {
+          currentTrackIndex = Math.min(currentTrackIndex, queue.length - 1);
+          playFromQueue(currentTrackIndex);
+        } else {
+          currentTrackIndex = -1;
+          audio.pause();
+          audio.src = '';
+          trackName.textContent = 'No track playing';
+        }
+      }
+      
+      renderQueue();
+    }
+
+    function formatTime(seconds) {
+      if (!seconds || isNaN(seconds)) return '0:00';
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    playPauseBtn.addEventListener('click', () => {
+      if (audio.paused) {
+        if (!audio.src && queue.length > 0) {
+          playFromQueue(0);
+        } else if (audio.src) {
+          audio.play().catch(e => {});
+        }
+      } else {
+        audio.pause();
+      }
+    });
+
+    audio.addEventListener('play', () => {
+      playPauseBtn.textContent = '⏸';
+    });
+
+    audio.addEventListener('pause', () => {
+      playPauseBtn.textContent = '▶';
+    });
+
+    prevBtn.addEventListener('click', () => {
+      if (currentTrackIndex > 0) {
+        playFromQueue(currentTrackIndex - 1);
+      }
+    });
+
+    nextBtn.addEventListener('click', () => {
+      if (currentTrackIndex < queue.length - 1) {
+        playFromQueue(currentTrackIndex + 1);
+      }
+    });
+
+    audio.addEventListener('ended', () => {
+      if (currentTrackIndex < queue.length - 1) {
+        playFromQueue(currentTrackIndex + 1);
+      }
+    });
+
+    audio.addEventListener('timeupdate', () => {
+      currentTimeEl.textContent = formatTime(audio.currentTime);
+      const percent = (audio.currentTime / audio.duration) * 100;
+      progress.style.width = `${percent}%`;
+    });
+
+    audio.addEventListener('loadedmetadata', () => {
+      durationEl.textContent = formatTime(audio.duration);
+    });
+
+    progressBar.addEventListener('click', (e) => {
+      const rect = progressBar.getBoundingClientRect();
+      const percent = (e.clientX - rect.left) / rect.width;
+      audio.currentTime = percent * audio.duration;
+    });
+
+    clearQueueBtn.addEventListener('click', () => {
+      queue = [];
+      currentTrackIndex = -1;
+      audio.pause();
+      audio.src = '';
+      trackName.textContent = 'No track playing';
+      renderQueue();
+    });
+
+    shuffleQueueBtn.addEventListener('click', () => {
+      if (queue.length === 0) return;
+      
+      const currentFile = currentTrackIndex >= 0 ? queue[currentTrackIndex] : null;
+      
+      for (let i = queue.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [queue[i], queue[j]] = [queue[j], queue[i]];
+      }
+      
+      if (currentFile !== null) {
+        currentTrackIndex = queue.indexOf(currentFile);
+      }
+      
+      renderQueue();
+    });
+
+    // Download functionality
+    downloadBtn.addEventListener('click', async () => {
+      const url = youtubeUrlInput.value.trim();
+      
+      if (!url) {
+        addStatus('Please enter a URL', 'error');
+        return;
+      }
+
+      if (!url.includes('youtube.com') && !url.includes('youtu.be')) {
+        addStatus('Invalid URL. Please enter a YouTube link', 'error');
+        return;
+      }
+
+      downloadBtn.disabled = true;
+      downloadBtnText.textContent = 'Downloading...';
+      
+      addStatus(`Starting download: ${url}`, 'info');
+
+      try {
+        window.electronAPI.downloadYoutube(url);
+      } catch (error) {
+        addStatus(`Error: ${error.message}`, 'error');
+        downloadBtn.disabled = false;
+        downloadBtnText.textContent = 'Download';
+      }
+    });
+
+    window.electronAPI.onDownloadProgress((data) => {
+      addStatus(data.message, 'info');
+    });
+
+    window.electronAPI.onDownloadComplete((data) => {
+      addStatus(`✓ Downloaded: ${data.filename}`, 'success');
+      downloadBtn.disabled = false;
+      downloadBtnText.textContent = 'Download';
+      youtubeUrlInput.value = '';
+      window.electronAPI.requestMusicFiles();
+    });
+
+    window.electronAPI.onDownloadError((data) => {
+      addStatus(`✗ Error: ${data.error}`, 'error');
+      downloadBtn.disabled = false;
+      downloadBtnText.textContent = 'Download';
+    });
+
+    function addStatus(message, type = 'info') {
+      if (statusList.querySelector('.no-status')) {
+        statusList.innerHTML = '';
+      }
+
+      const statusItem = document.createElement('div');
+      statusItem.className = `status-item status-${type}`;
+      
+      const icon = type === 'success' ? '✓' : 
+                   type === 'error' ? '✗' : 
+                   type === 'warning' ? '⚠' : 'ℹ';
+      
+      statusItem.innerHTML = `
+        <span class="status-icon">${icon}</span>
+        <span class="status-text">${message}</span>
+      `;
+      
+      statusList.insertBefore(statusItem, statusList.firstChild);
+
+      while (statusList.children.length > 5) {
+        statusList.removeChild(statusList.lastChild);
+      }
+    }
+  </script>
+</body>
+</html>

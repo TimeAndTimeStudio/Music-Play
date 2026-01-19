@@ -1,0 +1,65 @@
+{
+  "name": "tat-music",
+  "author": "TAT Studio <nok.song.1654@gmail.com>",
+  "homepage": "https://null.null",
+  "version": "1.0.0",
+  "description": "Music Player",
+  "main": "main.js",
+  "productName": "TAT Music",
+
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --linux deb",
+    "dist:win": "electron-builder --win"
+  },
+
+  "build": {
+    "appId": "com.tat.music",
+    "productName": "TATMusic",
+
+    "asar": true,
+    "compression": "maximum",
+
+    "files": [
+      "main.js",
+      "preload.js",
+      "app/**/*"
+    ],
+
+    "linux": {
+      "target": ["deb"],
+      "category": "Audio",
+      "icon": "assets/icons",
+      "maintainer": "TAT Studio <nok.song.1654@gmail.com>",
+      "synopsis": "Music Player for Linux",
+      "executableName": "tat-music"
+    },
+
+    "win": {
+      "target": ["nsis"],
+      "icon": "assets/icons/icon.ico"
+    },
+
+    "nsis": {
+      "oneClick": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "TAT Music"
+    },
+
+    "deb": {
+      "depends": []
+    },
+
+    "npmRebuild": false,
+    "removePackageScripts": true
+  },
+
+  "devDependencies": {
+    "electron": "^39.2.7",
+    "electron-builder": "^24.13.3"
+  }
+}
